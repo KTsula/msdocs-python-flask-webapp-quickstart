@@ -7,7 +7,7 @@
       "dependsOn": ["docker-build"],
       "dockerRun": {
         "containerName": "flask-demo",
-        "image": "flask-demo:latest",
+        "image": "flask-demo",
         "env": {
           "FLASK_APP": "path_to/flask_entry_point.py",
           "FLASK_ENV": "development"
@@ -36,7 +36,7 @@
       "dockerBuild": {
         "context": "${workspaceFolder}",
         "dockerfile": "${workspaceFolder}/Dockerfile",
-        "tag": "flask-demo:latest"
+        "tag": "flask-demo"
       }
     }
   ]
