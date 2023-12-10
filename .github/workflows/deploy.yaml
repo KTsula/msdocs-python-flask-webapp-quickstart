@@ -1,4 +1,4 @@
-name: Deploy WebApp
+name: Deploy App to containerized web app
 on: [push, workflow_dispatch]
 
 env:
@@ -9,7 +9,7 @@ env:
   REGISTRY_LOGIN_SERVER: "ketis.azurecr.io"
   WEB_APP_NAME: "ketis-webapp"
   REGISTRY_USERNAME: "ketis"
-  REGISTRY_PASSWORD: "Z+ZzdEVoUkJbxTbJeLaTYFA/IBXVjFPgi1XSBb7/7H+ACRCTP2l9"
+  REGISTRY_PASSWORD: "TrNWJcTJv4LnVkKebcYu17spMAN8e8aD89eu//Dxho+ACRAn77jJ"
   DOCKER_REGISTRY_SERVER_URL: "ketis.azurecr.io"
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
       - name: "Login via Azure CLI"
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS}}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: "Get docker registry credentials from Azure Key Vault"
         uses: azure/CLI@v1
