@@ -2,39 +2,50 @@ name: Deploy WebApp
 on: [push, workflow_dispatch]
 
 env:
-    IMAGE_NAME: flask-demo
+  IMAGE_NAME: flask-demo
+  KEY_VAULT_SECRET_NAME_ACR_USERNAME: "acr-username"
+  KEY_VAULT_SECRET_NAME_ACR_PASSWORD: "acr-password"
+  KEY_VAULT_NAME: "ketis-keyvault"
+  WEB_APP_NAME: "ketis-appservice"
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    # checkout the repo
-    - name: 'Checkout Github Action'
-      uses: actions/checkout@main
+      # checkout the repo
+      - name: "Checkout Github Action"
+        uses: actions/checkout@main
 
-    - name: 'Login via Azure CLI'
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS}}
-    
-    - uses: azure/docker-login@v1
-      with:
-        login-server: ${{vars.DOCKER_REGISTRY_SERVER_URL}}
-        username: ${{ secrets.DOCKER_REGISTRY_SERVER_USERNAME }}
-        password: ${{ secrets.DOCKER_REGISTRY_SERVER_PASSWORD }}
-    
-    - name: Set image version
-      id: image-version
-      run: echo "::set-output name=version::$(date +'%Y.%m.%d.%H.%M')"
-    
-    - name: 'Build and push image'
-      run: |
-        docker build . -t ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:${{ steps.image-version.outputs.version }}
-        docker build . -t ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:latest
-        docker push ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:${{ steps.image-version.outputs.version }}
-        docker push ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:latest
+      - name: "Login via Azure CLI"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS}}
 
-    - uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ vars.WEB_APP_NAME }}
-        images: '${{vars.DOCKER_REGISTRY_SERVER_URL}}/${{env.IMAGE_NAME}}:latest'
+      - name: "Get docker registry credentials from Azure Key Vault"
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "REGISTRY_USERNAME=$(az keyvault secret show --name ${{ env.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+            echo "REGISTRY_PASSWORD=$(az keyvault secret show --name ${{ env.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+
+      - uses: azure/docker-login@v1
+        with:
+          login-server: ${{vars.DOCKER_REGISTRY_SERVER_URL}}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set image version
+        id: image-version
+        run: echo "::set-output name=version::$(date +'%Y.%m.%d.%H.%M')"
+
+      - name: "Build and push image"
+        run: |
+          docker build . -t ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:${{ steps.image-version.outputs.version }}
+          docker build . -t ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:latest
+          docker push ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:${{ steps.image-version.outputs.version }}
+          docker push ${{ vars.DOCKER_REGISTRY_SERVER_URL }}/${{env.IMAGE_NAME}}:latest
+
+      - uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ vars.WEB_APP_NAME }}
+          images: "${{vars.DOCKER_REGISTRY_SERVER_URL}}/${{env.IMAGE_NAME}}:latest"
